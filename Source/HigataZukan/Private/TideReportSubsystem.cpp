@@ -1,7 +1,8 @@
-#include "HigataGameMode.h"
+#include "TideReportSubsystem.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
+#include "Engine/World.h"
 #include "TideSubsystem.h"
 
 namespace
@@ -18,11 +19,16 @@ namespace
 	}
 }
 
-void AHigataGameMode::BeginPlay()
+bool UTideReportSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
-	Super::BeginPlay();
+	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
+}
 
-	UGameInstance* GameInstance = GetGameInstance();
+void UTideReportSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+
+	UGameInstance* GameInstance = InWorld.GetGameInstance();
 	UTideSubsystem* Tide = GameInstance ? GameInstance->GetSubsystem<UTideSubsystem>() : nullptr;
 	if (!Tide || !Tide->LoadStation(TEXT("jma_tokyo")))
 	{
