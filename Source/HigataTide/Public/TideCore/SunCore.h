@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "TideCore/TideCoreApi.h"
+
 namespace HigataTide
 {
 	struct FSunPosition
@@ -15,5 +17,5 @@ namespace HigataTide
 	};
 
 	/** Sun position at a UTC epoch (ms) seen from a latitude / longitude (degrees, east positive). */
-	FSunPosition ComputeSunPosition(double Ms, double LatDeg, double LonDeg);
+	HIGATATIDE_API FSunPosition ComputeSunPosition(double Ms, double LatDeg, double LonDeg);
 }

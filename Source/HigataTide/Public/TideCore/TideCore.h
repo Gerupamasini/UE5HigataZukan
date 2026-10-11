@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "TideCore/TideCoreApi.h"
+
 #include <array>
 #include <string>
 #include <vector>
@@ -35,9 +37,9 @@ namespace HigataTide
 		double Tau = 0.0;
 	};
 
-	double Norm360(double X);
-	double JulianDate(double Ms);
-	FAstroArgs ComputeAstroArgs(double Ms);
+	HIGATATIDE_API double Norm360(double X);
+	HIGATATIDE_API double JulianDate(double Ms);
+	HIGATATIDE_API FAstroArgs ComputeAstroArgs(double Ms);
 
 	enum class ENodalClass
 	{
@@ -57,7 +59,7 @@ namespace HigataTide
 	};
 
 	/** The constituent catalogue, or nullptr for an unknown name. Names follow the JMA / IHO table. */
-	const FConstituentDef* FindConstituent(const std::string& Name);
+	HIGATATIDE_API const FConstituentDef* FindConstituent(const std::string& Name);
 
 	struct FNodal
 	{
@@ -67,7 +69,7 @@ namespace HigataTide
 	};
 
 	/** Nodal factor f and phase correction u for a nodal class, N = lunar node longitude (degrees). */
-	FNodal NodalCorrection(ENodalClass Class, double NDeg);
+	HIGATATIDE_API FNodal NodalCorrection(ENodalClass Class, double NDeg);
 
 	/** Phase lags in Japanese tables are referred to the 135E (JST) meridian. */
 	enum class EPhaseReference
