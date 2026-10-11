@@ -6,6 +6,15 @@ cd /d "%~dp0"
 
 echo [1/3] Updating from GitHub...
 git pull origin main
+if errorlevel 1 (
+  echo.
+  echo ==================================================
+  echo  UPDATE FAILED. Nothing was built.
+  echo  Send a screenshot of this window to Claude.
+  echo ==================================================
+  pause
+  exit /b 1
+)
 
 echo [2/3] Looking for Unreal Engine 5.8...
 set "UE="
