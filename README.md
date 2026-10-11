@@ -8,12 +8,13 @@
 ## 準備（Windows）
 
 1. **Unreal Engine 5.8**（5.8.3 で開発）を Epic Games Launcher から入れる
-2. **Visual Studio 2022** を入れる。インストーラーで「C++ によるゲーム開発」と、その中の「Unreal Engine インストーラー」と Windows SDK を選ぶ
+2. **Visual Studio**（2022 を最新に更新、または 2026）を入れる。インストーラーで「C++ によるゲーム開発」「C++ によるデスクトップ開発」、「Unreal Engine インストーラー」、Windows 11 SDK、**MSVC Build Tools v14.50**（UE 5.8 は 14.44 以前を受け付けない）を選ぶ
 3. **Git LFS** を入れて `git lfs install` を一度実行する。`.uasset` / `.umap` / `.glb` などは LFS に入る
 4. このリポジトリを clone する
-5. `HigataZukan.uproject` を右クリック →「Generate Visual Studio project files」を選ぶ
-6. `HigataZukan.sln` を開き、構成を **Development Editor / Win64** にしてビルドする
-7. `HigataZukan.uproject` を開く（初回はシェーダーの準備に時間がかかる）
+5. **`BuildEditor.bat`** をダブルクリックする（GitHub から更新してビルド。結果は `build-log.txt` にも残る）
+6. `SUCCESS` と出たら `HigataZukan.uproject` を開く（初回はシェーダーの準備に時間がかかる）
+
+エディターが起動中に落ちるときは **`OpenEditorDX11.bat`** で DirectX 11 で開いてみる（DirectX 12・レイトレーシング・GPU ドライバーの問題かどうかの切り分け）。
 
 GPU は DX12 対応のもの（目安は RTX 20 番台以降）。
 
