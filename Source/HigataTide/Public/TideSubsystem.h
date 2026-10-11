@@ -55,7 +55,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Tide")
 	double GetMaxAmplitude() const;
 
-	/** UTC moment ↔ JavaScript epoch milliseconds, the time unit of the tide core and the save data. */
+	/** UTC moment <-> JavaScript epoch milliseconds, the time unit of the tide core and the save data. */
 	static double ToEpochMs(const FDateTime& Utc);
 	static FDateTime FromEpochMs(double Ms);
 

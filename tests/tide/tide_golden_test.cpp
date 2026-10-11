@@ -98,7 +98,7 @@ namespace
 				double T, Want;
 				S >> T >> Want;
 				const double Got = Tag == "level" ? Model.Level(T) : Model.Rate(T);
-				// Same formulas in the same order: only libm differences (≪ 1 µm) are allowed.
+				// Same formulas in the same order: only libm differences (far below 1 um) are allowed.
 				Check(std::fabs(Got - Want) < 1e-9, Station.Id + " " + Tag + " @" + Num(T) + ": " + Num(Got) + " != " + Num(Want));
 			}
 			else if (Tag == "window")

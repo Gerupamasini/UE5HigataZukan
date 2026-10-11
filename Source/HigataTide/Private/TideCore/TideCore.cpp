@@ -1,4 +1,4 @@
-// Port of the web build's src/tide/ — keep the arithmetic in the same order as the TypeScript so the golden fixtures match.
+// Port of the web build's src/tide/: keep the arithmetic in the same order as the TypeScript so the golden fixtures match.
 
 #include "TideCore/TideCore.h"
 

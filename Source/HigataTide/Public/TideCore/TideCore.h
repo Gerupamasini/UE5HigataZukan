@@ -69,7 +69,7 @@ namespace HigataTide
 	/** Nodal factor f and phase correction u for a nodal class, N = lunar node longitude (degrees). */
 	FNodal NodalCorrection(ENodalClass Class, double NDeg);
 
-	/** Phase lags in Japanese tables are referred to the 135°E (JST) meridian. */
+	/** Phase lags in Japanese tables are referred to the 135E (JST) meridian. */
 	enum class EPhaseReference
 	{
 		UTC, JST135E
@@ -77,8 +77,8 @@ namespace HigataTide
 
 	/**
 	 * How the zone reference is applied to the equilibrium argument.
-	 * ZoneSpeed       : V = V_G(t_UT) + speed × 9 h  (zone-time epochs, XTide / NOAA style)
-	 * MeridianSpecies : V = V_G(t_UT) + species × 135° (equilibrium argument at the 135°E meridian)
+	 * ZoneSpeed       : V = V_G(t_UT) + speed * 9 h  (zone-time epochs, XTide / NOAA style)
+	 * MeridianSpecies : V = V_G(t_UT) + species * 135 deg (equilibrium argument at the 135E meridian)
 	 */
 	enum class EPhaseConvention
 	{
