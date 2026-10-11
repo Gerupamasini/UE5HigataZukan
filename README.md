@@ -28,6 +28,7 @@ GPU は DX12 対応のもの（目安は RTX 20 番台以降）。
 | `Source/HigataZukan/` の `HigataFlat` / `HigataMap` | 地図データから地形・海・太陽を作る |
 | `tests/tide/` | 潮汐と太陽位置（`TideCore` / `SunCore`）のゴールデンテスト。UE なしでビルドでき、CI で動く |
 | `tools/convert_map_png.py` | Web 版の地形 PNG を UE で読む raw ファイルに変換する |
+| `tools/unreal/make_materials.py` | 材質を作る（BuildEditor.bat の 4 段目） |
 | `Config/` | 描画（Lumen・Nanite・仮想シャドウマップ・HW レイトレーシング）、Enhanced Input、パッケージ設定 |
 
 ## 潮汐の使い方
@@ -50,7 +51,9 @@ TArray<FTideExtremum> Today = Tide->GetExtrema(FromUtc, ToUtc);
 - 太陽: 走水の緯度経度と今の時刻の位置（夜は暗い）
 - キー: **T** で 1 時間進める、**G** で 1 時間戻す、**R** で今に戻す。WASD とマウスで飛んで移動、E / Q で上下
 
-見た目はまだ仮（単色の地面と海）。形と潮の動きを確かめる段階。
+- 見た目: 地面は底質ごとの色（砂・泥まじりの砂・泥・礫・澪筋）。直近の満潮でかぶった所は暗くつやが出て、潮が引くと 1 時間に 5 cm ずつ乾く。海は Single Layer Water（浅い所は底が透ける）
+
+材質（マテリアル）は `tools/unreal/make_materials.py` がコードから作る。`BuildEditor.bat` がビルドの後に実行し、`Content/Generated/` に書き出す（git には入れない）。材質が無いときは単色で動く。
 
 ## テスト
 

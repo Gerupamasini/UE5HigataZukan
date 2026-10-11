@@ -60,7 +60,37 @@ bool FHigataMap::Load(const FString& MapId, FHigataMap& Out, FString& Error)
 		const uint16 V = static_cast<uint16>(Raw[K * 2] | (Raw[K * 2 + 1] << 8));
 		Out.Heights[K] = static_cast<float>(Out.MinHeightM + (V / 65535.0) * Span);
 	}
+
+	// Optional substrate grid: "substrate": {"file": ".../substrate.png", "palette": [...]}, raw indices in .u8.
+	const TSharedPtr<FJsonObject>* SubstrateObj = nullptr;
+	FString SubstrateFile;
+	const TArray<TSharedPtr<FJsonValue>>* Palette = nullptr;
+	if (Root->TryGetObjectField(TEXT("substrate"), SubstrateObj) && (*SubstrateObj)->TryGetStringField(TEXT("file"), SubstrateFile)
+		&& (*SubstrateObj)->TryGetArrayField(TEXT("palette"), Palette))
+	{
+		for (const TSharedPtr<FJsonValue>& Name : *Palette)
+		{
+			Out.SubstratePalette.Add(Name.IsValid() ? Name->AsString() : FString());
+		}
+		const FString SubstratePath = FPaths::Combine(MapsDir, FPaths::ChangeExtension(SubstrateFile, TEXT("u8")));
+		if (!FFileHelper::LoadFileToArray(Out.Substrate, *SubstratePath) || Out.Substrate.Num() != Out.N * Out.N)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Higata] %s: cannot read %d x %d substrate indices; the ground gets one colour"), *SubstratePath,
+				Out.N, Out.N);
+			Out.Substrate.Reset();
+		}
+	}
 	return true;
+}
+
+FString FHigataMap::GridSubstrate(int32 I, int32 J) const
+{
+	if (Substrate.Num() != N * N)
+	{
+		return TEXT("mud");
+	}
+	const int32 Index = Substrate[FMath::Clamp(J, 0, N - 1) * N + FMath::Clamp(I, 0, N - 1)];
+	return SubstratePalette.IsValidIndex(Index) ? SubstratePalette[Index] : FString(TEXT("mud"));
 }
 
 double FHigataMap::HeightAt(double X, double Z) const

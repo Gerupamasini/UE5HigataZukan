@@ -21,6 +21,10 @@ struct HIGATAZUKAN_API FHigataMap
 	double MaxHeightM = 0.0;
 	/** N * N heights in metres (T.P., about mean sea level), row 0 = north edge, column 0 = west edge. */
 	TArray<float> Heights;
+	/** N * N indices into SubstratePalette (empty when the map has no substrate file). */
+	TArray<uint8> Substrate;
+	/** Substrate names, e.g. sand, muddy_sand, mud, gravel, channel. */
+	TArray<FString> SubstratePalette;
 	double SpawnX = 0.0;
 	double SpawnZ = 0.0;
 	/** Web convention: the player looks along (-sin h, -cos h) in (x, z). */
@@ -31,6 +35,9 @@ struct HIGATAZUKAN_API FHigataMap
 	double Cell() const { return SizeM / (N - 1); }
 	double Half() const { return SizeM / 2; }
 	float GridHeight(int32 I, int32 J) const { return Heights[FMath::Clamp(J, 0, N - 1) * N + FMath::Clamp(I, 0, N - 1)]; }
+
+	/** Substrate name at a grid point; "mud" when unknown. */
+	FString GridSubstrate(int32 I, int32 J) const;
 
 	/** Bilinear height (metres) at a web-space point, clamped to the map edge. */
 	double HeightAt(double X, double Z) const;

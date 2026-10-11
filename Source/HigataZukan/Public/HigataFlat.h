@@ -6,6 +6,7 @@
 #include "HigataFlat.generated.h"
 
 class ADirectionalLight;
+class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UProceduralMeshComponent;
 
@@ -15,7 +16,9 @@ class UProceduralMeshComponent;
  * Spawned by UHigataStartSubsystem when play begins, in whatever level is open; the template level's meshes
  * are hidden, its sky and light are reused.
  *
- * First pass of the slice: shapes and motion, plain materials. Keys: T / G move the clock an hour, R resets.
+ * Ground colours come from the substrate grid; the ground darkens and turns glossy below the recent high-water
+ * mark. Materials come from tools/unreal/make_materials.py (plain colours if they are missing).
+ * Keys: T / G move the clock an hour, R resets.
  */
 UCLASS()
 class HIGATAZUKAN_API AHigataFlat : public AActor
@@ -46,9 +49,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ADirectionalLight> SunLight;
 
+	/** The generated ground material's instance (null with the plain fallback); its WetLevelM follows the tide. */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GroundMaterial;
+
 	FHigataMap Map;
 	bool bReady = false;
 	bool bPlacedPlayer = false;
+	/** True when the materials made by tools/unreal/make_materials.py were found. */
+	bool bGeneratedMaterials = false;
 	/** Hours added to the real clock with T / G. */
 	int32 ClockOffsetHours = 0;
 
@@ -60,4 +69,6 @@ private:
 	void PlacePlayer();
 	void HandleClockKeys();
 	UMaterialInterface* MakePlainMaterial(const FLinearColor& Color);
+	/** Highest recent water, decaying 5 cm an hour as the flat drains (the web build's wet band rule). */
+	double WetLevelAt(const FDateTime& Utc) const;
 };

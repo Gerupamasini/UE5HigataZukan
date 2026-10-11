@@ -14,3 +14,8 @@ DerivedDataCache/
 # CMake builds of the standalone tests
 build/
 build-log.txt
+
+# Made by tools/unreal/make_materials.py on each machine (BuildEditor.bat)
+Content/Generated/
+materials-log.txt
+__pycache__/
