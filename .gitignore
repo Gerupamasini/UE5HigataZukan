@@ -13,3 +13,4 @@ DerivedDataCache/
 *.xcworkspace
 # CMake builds of the standalone tests
 build/
+build-log.txt
