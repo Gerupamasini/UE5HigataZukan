@@ -1,10 +1,11 @@
 #include "HigataFlat.h"
 
 #include "Components/DirectionalLightComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
-#include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
@@ -106,11 +107,27 @@ void AHigataFlat::BeginPlay()
 
 void AHigataFlat::HideTemplateMeshes()
 {
-	// The stock template levels put a floor and a backdrop of hills at the origin, right where the flat goes.
-	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
+	// The stock template levels put a floor and a backdrop of hills (static meshes, or a landscape) at the
+	// origin, right where the flat goes. Hide every mesh and landscape not ours; keep the pawn and the sky.
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
-		It->SetActorHiddenInGame(true);
-		It->SetActorEnableCollision(false);
+		AActor* Actor = *It;
+		if (Actor == this || Actor->IsA<APawn>() || Actor->GetClass()->GetName().Contains(TEXT("Sky")))
+		{
+			continue;
+		}
+		TInlineComponentArray<UPrimitiveComponent*> Primitives(Actor);
+		for (UPrimitiveComponent* Primitive : Primitives)
+		{
+			const bool bHide = Primitive->IsA<UStaticMeshComponent>() || Primitive->GetClass()->GetName().Contains(TEXT("Landscape"));
+			if (bHide)
+			{
+				Primitive->SetHiddenInGame(true);
+				Primitive->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			}
+			UE_LOG(LogTemp, Display, TEXT("[Higata] template %s: %s / %s (%s)"), bHide ? TEXT("hidden") : TEXT("kept"), *Actor->GetName(),
+				*Primitive->GetName(), *Primitive->GetClass()->GetName());
+		}
 	}
 }
 
