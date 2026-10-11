@@ -6,6 +6,7 @@ public class HigataZukan : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "HigataTide" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "HigataTide", "ProceduralMeshComponent" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Json" });
 	}
 }

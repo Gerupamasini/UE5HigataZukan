@@ -25,7 +25,9 @@ GPU は DX12 対応のもの（目安は RTX 20 番台以降）。
 | `Source/HigataZukan/` | ゲーム本体のモジュール |
 | `Source/HigataTide/` | 潮汐。`TideCore/` は UE のヘッダーを使わない C++（Web 版の `src/tide/` の移植）、`UTideSubsystem` はブループリントとゲームから使う窓口 |
 | `Content/Data/` | ゲームデータ（種・行動ツリー・地図・潮汐観測点・文言の JSON）。Web 版の `public/data/` から引き継いだもの |
-| `tests/tide/` | `TideCore` のゴールデンテスト。UE なしでビルドでき、CI で動く |
+| `Source/HigataZukan/` の `HigataFlat` / `HigataMap` | 地図データから地形・海・太陽を作る |
+| `tests/tide/` | 潮汐と太陽位置（`TideCore` / `SunCore`）のゴールデンテスト。UE なしでビルドでき、CI で動く |
+| `tools/convert_map_png.py` | Web 版の地形 PNG を UE で読む raw ファイルに変換する |
 | `Config/` | 描画（Lumen・Nanite・仮想シャドウマップ・HW レイトレーシング）、Enhanced Input、パッケージ設定 |
 
 ## 潮汐の使い方
@@ -39,7 +41,16 @@ TArray<FTideExtremum> Today = Tide->GetExtrema(FromUtc, ToUtc);
 
 ブループリントからも同じ名前で呼べる（カテゴリ「Tide」）。
 
-**エディターでの動作確認:** レベルブループリントで `Event BeginPlay` → `Get Game Instance Subsystem`（TideSubsystem）→ `Load Station`（`jma_tokyo`）→ `Get Level At`（`Utc Now`）→ `Print String` とつないでプレイする。今の東京の潮位（m）が表示されれば成功。
+## 遊んで確かめる
+
+エディターでどのレベルを開いていても、▶（プレイ）を押すと **走水の干潟** が現れる（`UHigataStartSubsystem` が `AHigataFlat` を置く。テンプレートの床や山は隠れる）。
+
+- 地形: `Content/Data/maps/hashirimizu.json` と `height.u16`（Web 版の `height.png` を `tools/convert_map_png.py` で変換したもの）
+- 海面: 横須賀の観測点の今の潮位で上下する
+- 太陽: 走水の緯度経度と今の時刻の位置（夜は暗い）
+- キー: **T** で 1 時間進める、**G** で 1 時間戻す、**R** で今に戻す。WASD とマウスで飛んで移動、E / Q で上下
+
+見た目はまだ仮（単色の地面と海）。形と潮の動きを確かめる段階。
 
 ## テスト
 
