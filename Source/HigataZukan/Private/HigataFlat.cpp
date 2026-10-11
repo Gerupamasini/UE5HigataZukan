@@ -502,7 +502,7 @@ void AHigataFlat::UpdateCreatures(float DeltaSeconds, double Ms, double LevelM, 
 		{
 			++Nearby;
 		}
-		if (bShowMarkers && D < 20.0)
+		if (bShowMarkers && D < 25.0)
 		{
 			const HigataSim::FIndividual& Ind = C->GetIndividual();
 			const FVector At = C->GetBodyLocation();
@@ -510,6 +510,11 @@ void AHigataFlat::UpdateCreatures(float DeltaSeconds, double Ms, double LevelM, 
 				nullptr, Ind.Species->bCollectable ? FColor::Yellow : FColor(255, 140, 120), -1.f, true, 1.f);
 			DrawDebugLine(GetWorld(), At, At + FVector(0, 0, 20), FColor::Yellow, false, -1.f, 0, 0.5f);
 		}
+	}
+	if (Creatures.Num() != LastLoggedCount)
+	{
+		LastLoggedCount = Creatures.Num();
+		UE_LOG(LogTemp, Display, TEXT("[Higata] %d animals on the flat"), LastLoggedCount);
 	}
 	DrawEncyclopedia(Nearby);
 }
@@ -533,8 +538,8 @@ void AHigataFlat::DrawEncyclopedia(int32 NearbyCount)
 		if (S.bCollectable && S.Group != "bird" && Save->Zukan.Contains(HFL::ToF(S.Id))) ++Registered;
 	}
 	GEngine->AddOnScreenDebugMessage(HFL::HudKeyZukan, 1.f, FColor(180, 230, 180),
-		FString::Printf(TEXT("Encyclopedia %d / %d species   animals within 10 m: %d   [LMB / X] net  [Z] encyclopedia  [M] markers"), Registered,
-			Field->NumCatchable(), NearbyCount));
+		FString::Printf(TEXT("Encyclopedia %d / %d species   animals on the flat: %d (within 10 m: %d)   [LMB / X] net  [Z] encyclopedia  [M] markers"),
+			Registered, Field->NumCatchable(), Creatures.Num(), NearbyCount));
 	if (GetWorld()->GetTimeSeconds() < LastCatchUntil)
 	{
 		GEngine->AddOnScreenDebugMessage(HFL::HudKeyCatch, 1.f, FColor::Yellow, LastCatchText);

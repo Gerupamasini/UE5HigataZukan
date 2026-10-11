@@ -81,7 +81,8 @@ private:
 	double SpawnTimer = 0.0;
 	bool bFirstPlan = true;
 	bool bShowZukan = false;
-	bool bShowMarkers = false;
+	/** Name tags over the animals nearby (M toggles). On while the animals are stand-in shapes, small and hard to see. */
+	bool bShowMarkers = true;
 	FString LastCatchText;
 	double LastCatchUntil = 0.0;
 
@@ -102,6 +103,7 @@ private:
 	void HandleClockKeys();
 	void UpdateCreatures(float DeltaSeconds, double Ms, double LevelM, double RateMPerH, double AmplitudeM, double SunElevationDeg);
 	void DrawEncyclopedia(int32 NearbyCount);
+	int32 LastLoggedCount = -1;
 	void ShowCatch(const FString& Text);
 	UMaterialInterface* MakePlainMaterial(const FLinearColor& Color);
 	/** Highest recent water, decaying 5 cm an hour as the flat drains (the web build's wet band rule). */
