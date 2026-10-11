@@ -1,6 +1,7 @@
 @echo off
 rem Double-click to update this folder from GitHub and build the editor.
 rem The full build output is saved to build-log.txt next to this file.
+rem Uses findstr, not find: with Git's Unix tools on PATH, find is the Unix one.
 setlocal
 
 rem Run from a copy in %TEMP%: git pull may replace this very file, and cmd reads a batch file while running it.
@@ -11,7 +12,7 @@ if /i not "%~1"=="--run" (
 set "ROOT=%~2"
 cd /d "%ROOT%"
 
-tasklist /FI "IMAGENAME eq UnrealEditor.exe" 2>nul | find /I "UnrealEditor.exe" >nul
+tasklist /FI "IMAGENAME eq UnrealEditor.exe" 2>nul | findstr /I /C:"UnrealEditor.exe" >nul
 if not errorlevel 1 (
   echo.
   echo ==================================================
@@ -42,7 +43,7 @@ if errorlevel 1 (
 
 echo [2/4] Looking for Unreal Engine 5.8...
 set "UE="
-for /f "tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\EpicGames\Unreal Engine\5.8" /v InstalledDirectory 2^>nul ^| find "InstalledDirectory"') do set "UE=%%B"
+for /f "tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\EpicGames\Unreal Engine\5.8" /v InstalledDirectory 2^>nul ^| findstr /C:"InstalledDirectory"') do set "UE=%%B"
 if not defined UE set "UE=C:\Program Files\Epic Games\UE_5.8"
 if not exist "%UE%\Engine\Build\BatchFiles\Build.bat" (
   echo.
@@ -70,7 +71,7 @@ if not "%RESULT%"=="0" (
 
 echo [4/4] Making materials (the first time takes several minutes)...
 "%UE%\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "%ROOT%HigataZukan.uproject" -run=pythonscript -script="%ROOT%tools\unreal\make_materials.py" -unattended -nop4 -nosplash -stdout -FullStdOutLogOutput > materials-log.txt 2>&1
-find "HIGATA_MATERIALS_OK" materials-log.txt >nul
+findstr /C:"HIGATA_MATERIALS_OK" materials-log.txt >nul
 if errorlevel 1 (
   findstr /C:"[Higata materials]" /C:"HIGATA_MATERIALS" /C:"Error:" materials-log.txt
   echo.
