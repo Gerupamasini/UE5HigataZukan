@@ -14,6 +14,15 @@ jobs:
       - run: cmake --build build/tide
       - run: ctest --test-dir build/tide --output-on-failure
 
+  sim:
+    name: Habitat and spawner (C++) against the web build's fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S tests/sim -B build/sim
+      - run: cmake --build build/sim
+      - run: ctest --test-dir build/sim --output-on-failure
+
   ascii-sources:
     name: C++ sources are ASCII (MSVC on Japanese Windows reads them as CP932)
     runs-on: ubuntu-latest
