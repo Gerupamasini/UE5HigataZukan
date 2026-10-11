@@ -58,7 +58,9 @@ def to_property(src, prop, src_output=''):
 
 
 def finish(mat):
-    mat.set_editor_property('two_sided', True)
+    # One-sided on purpose: the C++ meshes already carry every triangle in both windings (so they show whichever way
+    # the engine culls); a two-sided material on top would draw the downward copy too, dark, fighting the lit one.
+    mat.set_editor_property('two_sided', False)
     mel.layout_material_expressions(mat)
     mel.recompile_material(mat)
     if not eal.save_loaded_asset(mat):
