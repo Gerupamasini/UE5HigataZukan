@@ -26,6 +26,7 @@ GPU は DX12 対応のもの（目安は RTX 20 番台以降）。
 | `Source/HigataTide/` | 潮汐。`TideCore/` は UE のヘッダーを使わない C++（Web 版の `src/tide/` の移植）、`UTideSubsystem` はブループリントとゲームから使う窓口 |
 | `Content/Data/` | ゲームデータ（種・行動ツリー・地図・潮汐観測点・文言の JSON）。Web 版の `public/data/` から引き継いだもの |
 | `Source/HigataZukan/` の `HigataFlat` / `HigataMap` | 地図データから地形・海・太陽を作る |
+| `Source/HigataZukan/` の `HigataWalker` | 歩くプレイヤー。Enhanced Input をコードで組み立てる（キーボード・マウス・ゲームパッド） |
 | `tests/tide/` | 潮汐と太陽位置（`TideCore` / `SunCore`）のゴールデンテスト。UE なしでビルドでき、CI で動く |
 | `tools/convert_map_png.py` | Web 版の地形 PNG を UE で読む raw ファイルに変換する |
 | `tools/unreal/make_materials.py` | 材質を作る（BuildEditor.bat の 4 段目） |
@@ -49,7 +50,10 @@ TArray<FTideExtremum> Today = Tide->GetExtrema(FromUtc, ToUtc);
 - 地形: `Content/Data/maps/hashirimizu.json` と `height.u16`（Web 版の `height.png` を `tools/convert_map_png.py` で変換したもの）
 - 海面: 横須賀の観測点の今の潮位で上下する
 - 太陽: 走水の緯度経度と今の時刻の位置（夜は暗い）
-- キー: **T** で 1 時間進める、**G** で 1 時間戻す、**R** で今に戻す。WASD とマウスで飛んで移動、E / Q で上下
+- 歩く: 目の高さ 1.6 m で干潟を歩く（`AHigataWalker`）。水が深いほど遅くなる（胴長は 1 m まで）
+- 操作（キーボード / ゲームパッド）: 移動 WASD / 左スティック、視点 マウス / 右スティック、走る Shift / 左スティック押し込み、飛ぶ切り替え F / Y（飛行中の上下 E・Q / 右・左トリガー）
+- 時刻: **T** で 1 時間進める、**G** で 1 時間戻す、**R** で今に戻す
+- 地図の外: 縁の起伏をそのまま 1 km 先まで延ばした粗い地面（西は陸、東は海底）
 
 - 見た目: 地面は底質ごとの色（砂・泥まじりの砂・泥・礫・澪筋）。直近の満潮でかぶった所は暗くつやが出て、潮が引くと 1 時間に 5 cm ずつ乾く。海は Single Layer Water（浅い所は底が透ける）
 

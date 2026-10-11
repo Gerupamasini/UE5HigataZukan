@@ -6,6 +6,7 @@
 #include "HigataFlat.generated.h"
 
 class ADirectionalLight;
+class AHigataWalker;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UProceduralMeshComponent;
@@ -18,7 +19,7 @@ class UProceduralMeshComponent;
  *
  * Ground colours come from the substrate grid; the ground darkens and turns glossy below the recent high-water
  * mark. Materials come from tools/unreal/make_materials.py (plain colours if they are missing).
- * Keys: T / G move the clock an hour, R resets.
+ * The player walks (AHigataWalker). Keys: T / G move the clock an hour, R resets.
  */
 UCLASS()
 class HIGATAZUKAN_API AHigataFlat : public AActor
@@ -48,6 +49,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ADirectionalLight> SunLight;
+
+	/** The player on foot, spawned in place of the level's default pawn. */
+	UPROPERTY(Transient)
+	TObjectPtr<AHigataWalker> Walker;
 
 	/** The generated ground material's instance (null with the plain fallback); its WetLevelM follows the tide. */
 	UPROPERTY(Transient)
