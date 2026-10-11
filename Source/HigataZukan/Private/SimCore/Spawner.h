@@ -67,6 +67,9 @@ namespace HigataSim
 		/** Individuals caught or otherwise gone today: never planned again. */
 		std::set<std::string> Removed;
 
+		/** Species kept out (the debug panel's chooser). */
+		std::set<std::string> Hidden;
+
 	private:
 		const FHabitat& Habitat;
 		const std::vector<FSpecies>& Species;

@@ -109,7 +109,7 @@ namespace HigataSim
 		{
 			for (const FSpecies& Sp : Species)
 			{
-				if (IsFieldSpecies(Sp.Id)) continue;
+				if (IsFieldSpecies(Sp.Id) || Hidden.count(Sp.Id)) continue;
 				if (Occupied.count(Sp.Id + ":" + std::to_string(C.Cell))) continue;
 				const bool bBird = Sp.Group == "bird";
 				for (size_t Ri = 0; Ri < Sp.Spawn.size(); ++Ri)
