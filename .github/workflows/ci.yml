@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  tide:
+    name: Tide core (C++) against the web build's fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S tests/tide -B build/tide
+      - run: cmake --build build/tide
+      - run: ctest --test-dir build/tide --output-on-failure

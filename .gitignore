@@ -1,0 +1,15 @@
+# Unreal build products and caches
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+.idea/
+*.sln
+*.VC.db
+*.opensdf
+*.sdf
+*.suo
+*.xcworkspace
+# CMake builds of the standalone tests
+build/
