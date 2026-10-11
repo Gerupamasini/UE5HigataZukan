@@ -1,6 +1,7 @@
 #include "HigataFlat.h"
 
 #include "Components/DirectionalLightComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DirectionalLight.h"
@@ -10,7 +11,12 @@
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "HigataCreature.h"
+#include "HigataField.h"
+#include "HigataSaveGame.h"
 #include "HigataWalker.h"
+#include "Kismet/GameplayStatics.h"
+#include "SimCore/JstTime.h"
 #include "InputCoreTypes.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -24,6 +30,28 @@ namespace HigataFlatLocal
 	constexpr uint64 HudKeyStatus = 0x48474131;
 	constexpr uint64 HudKeyHelp = 0x48474132;
 	constexpr uint64 HudKeyError = 0x48474133;
+	constexpr uint64 HudKeyCatch = 0x48474134;
+	constexpr uint64 HudKeyZukan = 0x48474135;
+	/** The encyclopedia list uses this key and the next ones, one per line. */
+	constexpr uint64 HudKeyZukanList = 0x48474200;
+	const TCHAR* SaveSlot = TEXT("Higata");
+
+	/** The hand net (the web build's NetView): the hoop's semi-axes across and up, the nearest point, the handle's reach. */
+	constexpr double NetZoneA = 0.21;
+	constexpr double NetZoneB = 0.28;
+	constexpr double NetZoneNear = 0.25;
+	constexpr double NetReach = 1.6;
+
+	FString ToF(const std::string& Utf8)
+	{
+		return UTF8_TO_TCHAR(Utf8.c_str());
+	}
+
+	/** A name the HUD font can draw: English, else the scientific name. */
+	FString DisplayName(const HigataSim::FSpecies& S)
+	{
+		return ToF(!S.NameEn.empty() ? S.NameEn : !S.NameSci.empty() ? S.NameSci : S.Id);
+	}
 	/** How far the sea reaches (metres). */
 	constexpr double FarM = 2000.0;
 	/** The apron around the map: its half width and grid step (metres). The step divides the map's half size. */
@@ -125,7 +153,35 @@ void AHigataFlat::BeginPlay()
 	BuildSurroundings();
 	BuildSea();
 	FindOrSpawnSun();
+
+	Field = new FHigataField();
+	if (!Field->Load(MapId, Error))
+	{
+		HFL::ShowError(TEXT("Animals: ") + Error);
+		delete Field;
+		Field = nullptr;
+	}
+	Save = Cast<UHigataSaveGame>(UGameplayStatics::LoadGameFromSlot(HFL::SaveSlot, 0));
+	if (!Save)
+	{
+		Save = Cast<UHigataSaveGame>(UGameplayStatics::CreateSaveGameObject(UHigataSaveGame::StaticClass()));
+	}
 	bReady = true;
+}
+
+void AHigataFlat::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	for (AHigataCreature* Creature : Creatures)
+	{
+		if (Creature)
+		{
+			Creature->Destroy();
+		}
+	}
+	Creatures.Reset();
+	delete Field;
+	Field = nullptr;
+	Super::EndPlay(EndPlayReason);
 }
 
 void AHigataFlat::HideTemplateMeshes()
@@ -312,6 +368,7 @@ void AHigataFlat::PlacePlayer()
 	Walker = GetWorld()->SpawnActor<AHigataWalker>(Start, FRotator(0.0, Yaw, 0.0), Params);
 	if (Walker)
 	{
+		Walker->SetFlat(this);
 		Pc->UnPossess();
 		Previous->Destroy();
 		Pc->Possess(Walker);
@@ -344,6 +401,237 @@ void AHigataFlat::HandleClockKeys()
 	if (Pc->WasInputKeyJustPressed(EKeys::R))
 	{
 		ClockOffsetHours = 0;
+	}
+	if (Pc->WasInputKeyJustPressed(EKeys::T) || Pc->WasInputKeyJustPressed(EKeys::G) || Pc->WasInputKeyJustPressed(EKeys::R))
+	{
+		// the habitat and the animals follow the new time at once
+		SpawnTimer = 0.0;
+	}
+	if (Pc->WasInputKeyJustPressed(EKeys::Z) || Pc->WasInputKeyJustPressed(EKeys::Gamepad_Special_Left))
+	{
+		bShowZukan = !bShowZukan;
+	}
+	if (Pc->WasInputKeyJustPressed(EKeys::M))
+	{
+		bShowMarkers = !bShowMarkers;
+	}
+}
+
+void AHigataFlat::UpdateCreatures(float DeltaSeconds, double Ms, double LevelM, double RateMPerH, double AmplitudeM, double SunElevationDeg)
+{
+	if (!Field || !Walker)
+	{
+		return;
+	}
+	const FVector P = Walker->GetActorLocation();
+	const FVector2D Player(P.X / 100.0, P.Y / 100.0);
+	Creatures.RemoveAll([](const TObjectPtr<AHigataCreature>& C) { return !IsValid(C); });
+
+	SpawnTimer -= DeltaSeconds;
+	if (SpawnTimer <= 0.0)
+	{
+		// every couple of seconds, as the web build does: the habitat's tags for the tide, who leaves, who arrives
+		SpawnTimer = 2.0;
+		Field->SetTide(Ms, LevelM);
+		const HigataSim::FSpawnEnv Env = Field->MakeEnv(Ms, LevelM, RateMPerH, AmplitudeM, SunElevationDeg);
+		std::vector<HigataSim::FLiveRef> Live;
+		Live.reserve(Creatures.Num());
+		for (AHigataCreature* C : Creatures)
+		{
+			const HigataSim::FIndividual& Ind = C->GetIndividual();
+			HigataSim::FLiveRef Ref;
+			Ref.Id = Ind.Id;
+			Ref.Species = Ind.Species;
+			Ref.Cell = Ind.Cell;
+			Ref.RuleIndex = Ind.RuleIndex;
+			Ref.X = C->GetWebXZ().X;
+			Ref.Z = C->GetWebXZ().Y;
+			Ref.MismatchSince = C->MismatchSince;
+			Live.push_back(Ref);
+		}
+		const std::vector<std::string> Leaving = Field->GetSpawner().Cull(Player.X, Player.Y, Env, Live);
+		for (size_t I = 0; I < Live.size(); ++I)
+		{
+			Creatures[static_cast<int32>(I)]->MismatchSince = Live[I].MismatchSince;
+		}
+		for (const std::string& Id : Leaving)
+		{
+			for (AHigataCreature* C : Creatures)
+			{
+				if (C->GetIndividual().Id == Id)
+				{
+					C->Destroy();
+				}
+			}
+		}
+		Creatures.RemoveAll([](const TObjectPtr<AHigataCreature>& C) { return !IsValid(C) || C->IsActorBeingDestroyed(); });
+		Live.clear();
+		for (AHigataCreature* C : Creatures)
+		{
+			HigataSim::FLiveRef Ref;
+			Ref.Id = C->GetIndividual().Id;
+			Ref.Species = C->GetIndividual().Species;
+			Ref.Cell = C->GetIndividual().Cell;
+			Live.push_back(Ref);
+		}
+		// at the start the animals are already about; later they arrive out of sight (10 m or more away)
+		const std::vector<HigataSim::FSpawnRequest> Requests = Field->GetSpawner().Plan(Player.X, Player.Y, Env, Live, bFirstPlan ? 0.0 : 10.0, 1.0);
+		bFirstPlan = false;
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		for (const HigataSim::FSpawnRequest& Req : Requests)
+		{
+			const HigataSim::FIndividual Ind = HigataSim::GenerateIndividual(*Req.Species, Req.Seed, Req.X, Req.Z, Req.Cell, Req.RuleIndex, Ms,
+				Req.bHasLengthRange, Req.Length0, Req.Length1);
+			AHigataCreature* C = GetWorld()->SpawnActor<AHigataCreature>(FHigataMap::ToUnreal(Req.X, Req.Z, Field->GroundAt(Req.X, Req.Z)), FRotator::ZeroRotator, Params);
+			if (C)
+			{
+				C->Init(Ind, Field, Base ? UMaterialInstanceDynamic::Create(Base, C) : nullptr);
+				Creatures.Add(C);
+			}
+		}
+	}
+
+	int32 Nearby = 0;
+	for (AHigataCreature* C : Creatures)
+	{
+		C->Step(DeltaSeconds, Player);
+		const double D = FVector2D::Distance(C->GetWebXZ(), Player);
+		if (D < 10.0)
+		{
+			++Nearby;
+		}
+		if (bShowMarkers && D < 20.0)
+		{
+			const HigataSim::FIndividual& Ind = C->GetIndividual();
+			const FVector At = C->GetBodyLocation();
+			DrawDebugString(GetWorld(), At + FVector(0, 0, 25), FString::Printf(TEXT("%s %.1f cm"), *HFL::DisplayName(*Ind.Species), Ind.LengthMm / 10.0),
+				nullptr, Ind.Species->bCollectable ? FColor::Yellow : FColor(255, 140, 120), -1.f, true, 1.f);
+			DrawDebugLine(GetWorld(), At, At + FVector(0, 0, 20), FColor::Yellow, false, -1.f, 0, 0.5f);
+		}
+	}
+	DrawEncyclopedia(Nearby);
+}
+
+void AHigataFlat::ShowCatch(const FString& Text)
+{
+	LastCatchText = Text;
+	LastCatchUntil = GetWorld()->GetTimeSeconds() + 6.0;
+	UE_LOG(LogTemp, Display, TEXT("[Higata] %s"), *Text);
+}
+
+void AHigataFlat::DrawEncyclopedia(int32 NearbyCount)
+{
+	if (!GEngine || !Field || !Save)
+	{
+		return;
+	}
+	int32 Registered = 0;
+	for (const HigataSim::FSpecies& S : Field->GetSpecies())
+	{
+		if (S.bCollectable && S.Group != "bird" && Save->Zukan.Contains(HFL::ToF(S.Id))) ++Registered;
+	}
+	GEngine->AddOnScreenDebugMessage(HFL::HudKeyZukan, 1.f, FColor(180, 230, 180),
+		FString::Printf(TEXT("Encyclopedia %d / %d species   animals within 10 m: %d   [LMB / X] net  [Z] encyclopedia  [M] markers"), Registered,
+			Field->NumCatchable(), NearbyCount));
+	if (GetWorld()->GetTimeSeconds() < LastCatchUntil)
+	{
+		GEngine->AddOnScreenDebugMessage(HFL::HudKeyCatch, 1.f, FColor::Yellow, LastCatchText);
+	}
+	if (bShowZukan)
+	{
+		uint64 Key = HFL::HudKeyZukanList;
+		for (const HigataSim::FSpecies& S : Field->GetSpecies())
+		{
+			if (!S.bCollectable || S.Group == "bird") continue;
+			const FHigataZukanEntry* E = Save->Zukan.Find(HFL::ToF(S.Id));
+			const FString Line = E ? FString::Printf(TEXT("  [x] %s (%s)  x%d  best %.1f cm"), *HFL::DisplayName(S), *HFL::ToF(S.NameSci), E->Count, E->BestLengthMm / 10.0)
+				: FString(TEXT("  [ ] ???"));
+			GEngine->AddOnScreenDebugMessage(Key++, 1.f, E ? FColor::White : FColor(150, 150, 150), Line, false);
+		}
+	}
+}
+
+void AHigataFlat::SwingNet(const FVector& CameraLocation, const FRotator& CameraRotation, double DepthHereM)
+{
+	if (!Field || !Save)
+	{
+		return;
+	}
+	const FRotationMatrix Frame(CameraRotation);
+	const FVector Forward = Frame.GetUnitAxis(EAxis::X), Right = Frame.GetUnitAxis(EAxis::Y), Up = Frame.GetUnitAxis(EAxis::Z);
+	const FVector2D Player(CameraLocation.X / 100.0, CameraLocation.Y / 100.0);
+	// deep water drags on the net: 0 in the shallows, 1 at knee depth and beyond
+	const double Slow = FMath::Clamp((DepthHereM - 0.15) / 0.45, 0.0, 1.0);
+
+	TArray<AHigataCreature*> Caught;
+	TArray<FString> NotTaken;
+	for (AHigataCreature* C : Creatures)
+	{
+		if (!IsValid(C)) continue;
+		const HigataSim::FIndividual& Ind = C->GetIndividual();
+		const double Margin = FMath::Max(0.06, Ind.LengthMm / 2000.0);
+		// the hoop's upright ellipse carried down the line of sight (metres in camera space)
+		const FVector D = (C->GetBodyLocation() - CameraLocation) / 100.0;
+		const double T = FVector::DotProduct(D, Forward);
+		if (T < HFL::NetZoneNear || T > HFL::NetReach + Margin) continue;
+		const double Ex = FVector::DotProduct(D, Right) / (HFL::NetZoneA + Margin), Ey = FVector::DotProduct(D, Up) / (HFL::NetZoneB + Margin);
+		const double Edge = FMath::Sqrt(Ex * Ex + Ey * Ey);
+		if (Edge > 1.0) continue;
+		const HigataSim::FSpecies& Sp = *Ind.Species;
+		if (!Sp.bCollectable || Sp.Group == "bird" || Sp.Locomotion == "burrow")
+		{
+			NotTaken.AddUnique(HFL::DisplayName(Sp));
+			continue;
+		}
+		// the web build's odds of getting away: alertness (squared), the rim of the hoop, the species, deep water
+		const double Alert = C->GetAlert();
+		double Escape = 0.6 * Alert * Alert * (0.5 + Sp.AlertPenalty) + 0.25 * Edge * Edge + 0.1 * Sp.BaseDifficulty;
+		Escape = FMath::Clamp(Escape + 0.35 * Slow * (0.5 + Alert), 0.0, 0.85);
+		if (FMath::FRand() > Escape)
+		{
+			Caught.Add(C);
+		}
+	}
+	// everything near bolts
+	for (AHigataCreature* C : Creatures)
+	{
+		if (IsValid(C) && !Caught.Contains(C) && FVector2D::Distance(C->GetWebXZ(), Player) < 2.5)
+		{
+			C->Startle(Player);
+		}
+	}
+
+	TArray<FString> Lines;
+	for (AHigataCreature* C : Caught)
+	{
+		const HigataSim::FIndividual& Ind = C->GetIndividual();
+		FHigataZukanEntry& Entry = Save->Zukan.FindOrAdd(HFL::ToF(Ind.Species->Id));
+		const bool bNew = Entry.Count == 0;
+		if (bNew)
+		{
+			Entry.FirstCaughtUtc = FDateTime::UtcNow();
+		}
+		++Entry.Count;
+		Entry.BestLengthMm = FMath::Max(Entry.BestLengthMm, static_cast<float>(Ind.LengthMm));
+		Field->GetSpawner().Removed.insert(Ind.Id);
+		Lines.Add(FString::Printf(TEXT("%s %.1f cm%s"), *HFL::DisplayName(*Ind.Species), Ind.LengthMm / 10.0, bNew ? TEXT("  - NEW in the encyclopedia!") : TEXT("")));
+		Creatures.Remove(C);
+		C->Destroy();
+	}
+	if (Lines.Num() > 0)
+	{
+		ShowCatch(TEXT("Caught: ") + FString::Join(Lines, TEXT("  /  ")));
+		UGameplayStatics::SaveGameToSlot(Save, HFL::SaveSlot, 0);
+	}
+	else if (NotTaken.Num() > 0)
+	{
+		ShowCatch(FString::Join(NotTaken, TEXT(", ")) + TEXT(": not one to take with the net - let it be."));
+	}
+	else
+	{
+		ShowCatch(TEXT("The net came up empty."));
 	}
 }
 
@@ -403,6 +691,7 @@ void AHigataFlat::Tick(float DeltaSeconds)
 	}
 
 	const HigataTide::FSunPosition SunPos = HigataTide::ComputeSunPosition(Ms, Map.OriginLat, Map.OriginLon);
+	UpdateCreatures(DeltaSeconds, Ms, Level, Tide->GetRateAt(Utc), Tide->GetMaxAmplitude(), SunPos.Elevation);
 	if (SunLight)
 	{
 		// Toward the sun in web space is (sin az cos el, sin el, -cos az cos el); in Unreal (X east, Y south, Z up):
@@ -415,8 +704,8 @@ void AHigataFlat::Tick(float DeltaSeconds)
 	{
 		const FString Offset = ClockOffsetHours == 0 ? TEXT("now") : FString::Printf(TEXT("now %+d h"), ClockOffsetHours);
 		GEngine->AddOnScreenDebugMessage(HFL::HudKeyStatus, 1.f, FColor::Cyan,
-			FString::Printf(TEXT("Hashirimizu  %s JST (%s)   tide %+.2f m %s   wet up to %+.2f m   sun %.0f deg%s"),
-				*(Utc + HFL::JstOffset).ToString(TEXT("%m/%d %H:%M")), *Offset, Level, bRising ? TEXT("rising") : TEXT("falling"), WetLevel,
+			FString::Printf(TEXT("Hashirimizu  %s JST (%s)  %s   tide %+.2f m %s   wet up to %+.2f m   sun %.0f deg%s"),
+				*(Utc + HFL::JstOffset).ToString(TEXT("%m/%d %H:%M")), *Offset, *HFL::ToF(HigataSim::SeasonOf(Ms)), Level, bRising ? TEXT("rising") : TEXT("falling"), WetLevel,
 				SunPos.Elevation, bGeneratedMaterials ? TEXT("") : TEXT("   (plain materials: run BuildEditor.bat)")));
 		const FString Wading = DepthM > 0.01 ? FString::Printf(TEXT("   in water %.2f m%s"), DepthM, DepthM > 1.0 ? TEXT(" (over the waders)") : TEXT("")) : FString();
 		GEngine->AddOnScreenDebugMessage(HFL::HudKeyHelp, 1.f, FColor::White,

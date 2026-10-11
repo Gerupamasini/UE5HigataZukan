@@ -7,6 +7,7 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "HigataFlat.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
@@ -75,6 +76,7 @@ void AHigataWalker::BuildInput()
 	RunAction = MakeAction(this, TEXT("Run"), EInputActionValueType::Boolean);
 	FlyAction = MakeAction(this, TEXT("Fly"), EInputActionValueType::Boolean);
 	UpDownAction = MakeAction(this, TEXT("UpDown"), EInputActionValueType::Axis1D);
+	NetAction = MakeAction(this, TEXT("Net"), EInputActionValueType::Boolean);
 
 	// Move: (x = right, y = forward). A key gives +x; swizzle puts it on y, negate flips it.
 	AddModifier<UInputModifierSwizzleAxis>(Mapping->MapKey(MoveAction, EKeys::W), this);
@@ -94,6 +96,9 @@ void AHigataWalker::BuildInput()
 	Mapping->MapKey(RunAction, EKeys::Gamepad_LeftThumbstick);
 	Mapping->MapKey(FlyAction, EKeys::F);
 	Mapping->MapKey(FlyAction, EKeys::Gamepad_FaceButton_Top);
+
+	Mapping->MapKey(NetAction, EKeys::LeftMouseButton);
+	Mapping->MapKey(NetAction, EKeys::Gamepad_FaceButton_Left);
 
 	Mapping->MapKey(UpDownAction, EKeys::E);
 	AddModifier<UInputModifierNegate>(Mapping->MapKey(UpDownAction, EKeys::Q), this);
@@ -128,6 +133,20 @@ void AHigataWalker::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	Input->BindAction(RunAction, ETriggerEvent::Completed, this, &AHigataWalker::StopRun);
 	Input->BindAction(FlyAction, ETriggerEvent::Started, this, &AHigataWalker::ToggleFly);
 	Input->BindAction(UpDownAction, ETriggerEvent::Triggered, this, &AHigataWalker::UpDown);
+	Input->BindAction(NetAction, ETriggerEvent::Started, this, &AHigataWalker::SwingNet);
+}
+
+void AHigataWalker::SetFlat(AHigataFlat* InFlat)
+{
+	Flat = InFlat;
+}
+
+void AHigataWalker::SwingNet(const FInputActionValue& Value)
+{
+	if (Flat.IsValid() && !IsFlying())
+	{
+		Flat->SwingNet(Camera->GetComponentLocation(), GetControlRotation(), GetWaterDepthM());
+	}
 }
 
 void AHigataWalker::Move(const FInputActionValue& Value)

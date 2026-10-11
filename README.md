@@ -26,6 +26,8 @@ GPU は DX12 対応のもの（目安は RTX 20 番台以降）。
 | `Source/HigataTide/` | 潮汐。`TideCore/` は UE のヘッダーを使わない C++（Web 版の `src/tide/` の移植）、`UTideSubsystem` はブループリントとゲームから使う窓口 |
 | `Content/Data/` | ゲームデータ（種・行動ツリー・地図・潮汐観測点・文言の JSON）。Web 版の `public/data/` から引き継いだもの |
 | `Source/HigataZukan/` の `HigataFlat` / `HigataMap` | 地図データから地形・海・太陽を作る |
+| `Source/HigataZukan/Private/SimCore/` | 生息環境・出現ルール・個体の生成（UE なしの C++。Web 版と照合する `tests/sim`） |
+| `Source/HigataZukan/Private/` の `HigataField` / `HigataCreature` / `HigataSaveGame` | 生き物の出現・動き・図鑑のセーブ |
 | `Source/HigataZukan/` の `HigataWalker` | 歩くプレイヤー。Enhanced Input をコードで組み立てる（キーボード・マウス・ゲームパッド） |
 | `tests/tide/` | 潮汐と太陽位置（`TideCore` / `SunCore`）のゴールデンテスト。UE なしでビルドでき、CI で動く |
 | `tools/convert_map_png.py` | Web 版の地形 PNG を UE で読む raw ファイルに変換する |
@@ -53,6 +55,9 @@ TArray<FTideExtremum> Today = Tide->GetExtrema(FromUtc, ToUtc);
 - 歩く: 目の高さ 1.6 m で干潟を歩く（`AHigataWalker`）。水が深いほど遅くなる（胴長は 1 m まで）
 - 操作（キーボード / ゲームパッド）: 移動 WASD / 左スティック、視点 マウス / 右スティック、走る Shift / 左スティック押し込み、飛ぶ切り替え F / Y（飛行中の上下 E・Q / 右・左トリガー）
 - 時刻: **T** で 1 時間進める、**G** で 1 時間戻す、**R** で今に戻す
+- 生き物: Web 版と同じ出現ルール（`SimCore`）で、潮・時刻・季節・場所に合った種が現れる。今は種ごとの仮の形（実寸）で、休む・泳ぎ回る・人から逃げる・潮が引いたら水へ戻る
+- 採集: **左クリック / X ボタン**でタモ網を振る。網の輪（視線の先 1.6 m まで）に入った生き物が、Web 版と同じ確率で入る（警戒・輪の縁・深い水で逃げやすい）。アカエイなど採らない種は「そっとしておく」
+- 図鑑: 採った種が記録され、セーブされる（`UHigataSaveGame`、スロット Higata）。**Z** で一覧、**M** で近くの生き物に名前の目印
 - 地図の外: 縁の起伏をそのまま 1 km 先まで延ばした粗い地面（西は陸、東は海底）
 
 - 見た目: 地面は底質ごとの色（砂・泥まじりの砂・泥・礫・澪筋）。直近の満潮でかぶった所は暗くつやが出て、潮が引くと 1 時間に 5 cm ずつ乾く。海は Single Layer Water（浅い所は底が透ける）
@@ -62,7 +67,10 @@ TArray<FTideExtremum> Today = Tide->GetExtrema(FromUtc, ToUtc);
 ## テスト
 
 ```bash
-cmake -S tests/tide -B build/tide && cmake --build build/tide && ctest --test-dir build/tide --output-on-failure
+cmake -S tests/tide -B build/tide && cmake --build build/tide && ctest --test-dir build/tide --output-on-failure   # 潮汐・太陽
+cmake -S tests/sim -B build/sim && cmake --build build/sim && ctest --test-dir build/sim --output-on-failure       # 生息環境・出現
 ```
+
+出現の照合データ（`tests/sim/fixtures/`）と走水のアマモ場の焼き込み（`Content/Data/maps/hashirimizu/features.u8`）は、Web 版のリポジトリで `tools/golden/spawn_golden.test.ts` を実行して作る（手順はそのファイルの先頭）。
 
 フィクスチャ（`tests/tide/fixtures/`）は Web 版の TypeScript で作ったもので、固定してある。C++ の潮汐を直したらこのテストで確かめる。計算式を意図して変えるときだけ、フィクスチャも作り直す。

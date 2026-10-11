@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "HigataWalker.generated.h"
 
+class AHigataFlat;
 class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
@@ -14,6 +15,7 @@ struct FInputActionValue;
  * Input is Enhanced Input built in code (no assets): keyboard + mouse and gamepad.
  *   Move  WASD / left stick      Look  mouse / right stick      Run  Shift / left stick click
  *   Fly   F / Y (top face)       Up/down while flying  E, Q / right, left trigger
+ *   Net   left mouse button / X (left face)
  */
 UCLASS()
 class HIGATAZUKAN_API AHigataWalker : public ACharacter
@@ -32,6 +34,9 @@ public:
 	double GetWaterDepthM() const;
 
 	bool IsFlying() const;
+
+	/** The field the net swings in. */
+	void SetFlat(AHigataFlat* InFlat);
 
 protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -61,6 +66,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> UpDownAction;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> NetAction;
+
+	TWeakObjectPtr<AHigataFlat> Flat;
+
 	double WaterLevelM = -100.0;
 	bool bRunning = false;
 
@@ -72,4 +82,5 @@ private:
 	void StopRun(const FInputActionValue& Value);
 	void ToggleFly(const FInputActionValue& Value);
 	void UpDown(const FInputActionValue& Value);
+	void SwingNet(const FInputActionValue& Value);
 };

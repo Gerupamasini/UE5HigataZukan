@@ -6,7 +6,10 @@
 #include "HigataFlat.generated.h"
 
 class ADirectionalLight;
+class AHigataCreature;
 class AHigataWalker;
+class FHigataField;
+class UHigataSaveGame;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UProceduralMeshComponent;
@@ -19,7 +22,9 @@ class UProceduralMeshComponent;
  *
  * Ground colours come from the substrate grid; the ground darkens and turns glossy below the recent high-water
  * mark. Materials come from tools/unreal/make_materials.py (plain colours if they are missing).
- * The player walks (AHigataWalker). Keys: T / G move the clock an hour, R resets.
+ * The player walks (AHigataWalker). Animals appear by the web build's spawn rules (FHigataField / SimCore) and are
+ * caught with the net into the encyclopedia (UHigataSaveGame).
+ * Keys: T / G move the clock an hour, R resets, Z shows the encyclopedia, M marks the animals nearby.
  */
 UCLASS()
 class HIGATAZUKAN_API AHigataFlat : public AActor
@@ -34,8 +39,15 @@ public:
 	/** The map to build; set before BeginPlay. */
 	FString MapId = TEXT("hashirimizu");
 
+	/**
+	 * Swing the hand net from the camera: animals inside the hoop's ellipse down the line of sight are caught unless
+	 * they get away (the web build's odds); everything near bolts. DepthHereM is the water at the player's feet.
+	 */
+	void SwingNet(const FVector& CameraLocation, const FRotator& CameraRotation, double DepthHereM);
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -58,6 +70,21 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> GroundMaterial;
 
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AHigataCreature>> Creatures;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHigataSaveGame> Save;
+
+	/** The simulation (owned; created in BeginPlay, deleted in EndPlay). */
+	FHigataField* Field = nullptr;
+	double SpawnTimer = 0.0;
+	bool bFirstPlan = true;
+	bool bShowZukan = false;
+	bool bShowMarkers = false;
+	FString LastCatchText;
+	double LastCatchUntil = 0.0;
+
 	FHigataMap Map;
 	bool bReady = false;
 	bool bPlacedPlayer = false;
@@ -73,6 +100,9 @@ private:
 	void FindOrSpawnSun();
 	void PlacePlayer();
 	void HandleClockKeys();
+	void UpdateCreatures(float DeltaSeconds, double Ms, double LevelM, double RateMPerH, double AmplitudeM, double SunElevationDeg);
+	void DrawEncyclopedia(int32 NearbyCount);
+	void ShowCatch(const FString& Text);
 	UMaterialInterface* MakePlainMaterial(const FLinearColor& Color);
 	/** Highest recent water, decaying 5 cm an hour as the flat drains (the web build's wet band rule). */
 	double WetLevelAt(const FDateTime& Utc) const;
